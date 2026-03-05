@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
-# 从 trainer 复用特征工程和模型定义
+# reuse feature engineering and model definitions from trainer
 from dl.trainer import GoldLSTM, compute_features, FEATURE_COLUMNS, NUM_FEATURES
 
 
@@ -19,7 +19,7 @@ class DLPredictor:
 
         self.model_dir = model_dir
 
-        # 黄金保持原有文件名，其他品种使用 {key}_full_history.csv
+        # gold keeps its original filename; other commodities use {key}_full_history.csv
         if commodity_key == "gold":
             csv_name = "gc_f_full_history.csv"
         else:
@@ -29,7 +29,7 @@ class DLPredictor:
             "data", csv_name
         )
 
-        # 加载 Scaler（每个品种独立 scaler）
+        # load scaler (each commodity has its own scaler)
         if commodity_key == "gold":
             scaler_name = "scaler.pkl"
         else:
@@ -42,16 +42,16 @@ class DLPredictor:
         with open(scaler_path, "rb") as f:
             self.scaler = pickle.load(f)
 
-        # 加载 LSTM
+        # load LSTM
         self.lstm_model = self._load_model("lstm")
 
-        # 尝试加载 Transformer（可选）
+        # optionally load Transformer
         self.transformer_model = self._load_model("transformer")
 
         self.is_ready = self.lstm_model is not None
 
     def _load_model(self, model_type):
-        """加载指定类型的模型权重"""
+        """Load model weights for the specified model type."""
         key = self.commodity_key
         if model_type == "lstm":
             weight_file = f"{key}_lstm_weights.pth"
@@ -75,11 +75,11 @@ class DLPredictor:
         return model
 
     def _predict_with_model(self, model, x_tensor):
-        """用指定模型进行前向预测"""
+        """Run a forward prediction with the specified model."""
         with torch.no_grad():
             scaled_pred = model(x_tensor).cpu().numpy()
 
-        # 反归一化：构造一个与 scaler 维度匹配的假行，只填入第 0 列（Close）
+        # inverse-transform: build a dummy row matching scaler dimensions, filling only column 0 (Close)
         dummy = np.zeros((1, NUM_FEATURES))
         dummy[0, 0] = scaled_pred[0][0]
         actual_price = self.scaler.inverse_transform(dummy)[0][0]

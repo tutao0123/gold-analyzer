@@ -1,6 +1,6 @@
 """
-黄金价格分析模块
-提供趋势分析、波动率计算、技术指标等功能
+Gold price analysis module
+Provides trend analysis, volatility calculation, technical indicators, and more
 """
 
 import logging
@@ -16,31 +16,31 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TrendAnalysis:
-    """趋势分析结果"""
+    """Trend analysis result"""
     direction: str  # "up", "down", "sideways"
-    strength: float  # 0-1 强度
+    strength: float  # 0-1 strength
     description: str
 
 
 @dataclass
 class VolatilityAnalysis:
-    """波动率分析结果"""
-    daily_volatility: float  # 日波动率
-    annualized_volatility: float  # 年化波动率
+    """Volatility analysis result"""
+    daily_volatility: float  # daily volatility
+    annualized_volatility: float  # annualized volatility
     volatility_level: str  # "low", "medium", "high"
-    avg_daily_range: float  # 平均日波幅
+    avg_daily_range: float  # average daily range
 
 
 @dataclass
 class SupportResistance:
-    """支撑阻力位"""
+    """Support and resistance levels"""
     support_levels: List[float]
     resistance_levels: List[float]
 
 
 @dataclass
 class AnalysisResult:
-    """完整分析结果"""
+    """Complete analysis result"""
     current_price: float
     price_change_1d: float
     price_change_7d: float
@@ -48,30 +48,30 @@ class AnalysisResult:
     trend: TrendAnalysis
     volatility: VolatilityAnalysis
     support_resistance: SupportResistance
-    ma_analysis: Dict[str, float]  # 移动平均线分析
+    ma_analysis: Dict[str, float]  # moving average analysis
     rsi: float
     recommendation: str
     summary: str
 
 
 class GoldPriceAnalyzer:
-    """黄金价格分析器"""
+    """Gold price analyzer"""
 
     def __init__(self, data: List[Dict]):
         """
-        初始化分析器
+        Initialize the analyzer.
         Args:
-            data: 价格数据列表，每项包含 price, date 等字段
+            data: list of price data dicts, each containing price, date, etc.
         """
         self.data = sorted(data, key=lambda x: x.get("date", x.get("timestamp", "")))
         self.prices = [d["price"] for d in self.data if "price" in d]
         self.dates = [d.get("date", d.get("timestamp", "")) for d in self.data]
 
         if len(self.prices) < 2:
-            raise ValueError("数据点不足，至少需要2个价格数据")
+            raise ValueError("Insufficient data points: at least 2 price records are required")
 
     def calculate_change(self, days: int) -> float:
-        """计算指定天数的涨跌幅"""
+        """Calculate price change percentage over the specified number of days"""
         if len(self.prices) < days + 1:
             days = len(self.prices) - 1
         if days <= 0:
@@ -83,23 +83,23 @@ class GoldPriceAnalyzer:
 
     def analyze_trend(self, short_window: int = 5, long_window: int = 20) -> TrendAnalysis:
         """
-        分析价格趋势
-        使用短期和长期移动平均线的关系判断趋势
+        Analyze price trend.
+        Determines trend direction using the relationship between short-term and long-term moving averages.
         """
         if len(self.prices) < long_window:
             long_window = len(self.prices)
         if len(self.prices) < short_window:
             short_window = len(self.prices)
 
-        # 计算移动平均线
+        # Calculate moving averages
         short_ma = mean(self.prices[-short_window:])
         long_ma = mean(self.prices[-long_window:])
 
-        # 计算趋势强度
+        # Calculate trend strength
         diff_ratio = abs(short_ma - long_ma) / long_ma
-        strength = min(diff_ratio * 100, 1.0)  # 归一化到 0-1
+        strength = min(diff_ratio * 100, 1.0)  # normalize to 0-1
 
-        # 判断趋势方向
+        # Determine trend direction
         if short_ma > long_ma * 1.001:
             direction = "up"
             description = f"上涨趋势 (MA{short_window}=${short_ma:.2f} > MA{long_window}=${long_ma:.2f})"
@@ -113,11 +113,11 @@ class GoldPriceAnalyzer:
         return TrendAnalysis(direction, strength, description)
 
     def calculate_volatility(self) -> VolatilityAnalysis:
-        """计算波动率指标"""
+        """Calculate volatility metrics"""
         if len(self.prices) < 2:
             return VolatilityAnalysis(0, 0, "unknown", 0)
 
-        # 计算日收益率
+        # Calculate daily returns
         returns = []
         daily_ranges = []
 
@@ -127,7 +127,7 @@ class GoldPriceAnalyzer:
             daily_return = (curr_price - prev_price) / prev_price
             returns.append(daily_return)
 
-            # 计算日波幅 (High - Low) / Open
+            # Calculate daily range (High - Low) / Open
             high = self.data[i].get("high", curr_price)
             low = self.data[i].get("low", curr_price)
             open_price = self.data[i].get("open", curr_price)
@@ -138,13 +138,13 @@ class GoldPriceAnalyzer:
         if not returns:
             return VolatilityAnalysis(0, 0, "unknown", 0)
 
-        # 日波动率 (标准差)
+        # Daily volatility (standard deviation)
         daily_vol = stdev(returns) if len(returns) > 1 else 0
 
-        # 年化波动率 (假设252个交易日)
+        # Annualized volatility (assuming 252 trading days)
         annualized_vol = daily_vol * (252 ** 0.5)
 
-        # 波动率等级
+        # Volatility level
         if annualized_vol < 0.1:
             vol_level = "low"
         elif annualized_vol < 0.2:
@@ -152,7 +152,7 @@ class GoldPriceAnalyzer:
         else:
             vol_level = "high"
 
-        # 平均日波幅
+        # Average daily range
         avg_range = mean(daily_ranges) * 100 if daily_ranges else 0
 
         return VolatilityAnalysis(
@@ -164,8 +164,8 @@ class GoldPriceAnalyzer:
 
     def find_support_resistance(self, window: int = 5) -> SupportResistance:
         """
-        查找支撑和阻力位
-        使用局部最小值/最大值方法
+        Find support and resistance levels.
+        Uses local minima/maxima method.
         """
         prices = self.prices
         if len(prices) < window * 2 + 1:

@@ -7,21 +7,21 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader, Dataset
 import pickle
 
-# 保证固定设备
+# ensure fixed device selection
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# ==================== 特征工程 ====================
+# ==================== Feature Engineering ====================
 
 FEATURE_COLUMNS = ['Close', 'RSI', 'MACD', 'MACD_Signal', 'BB_Upper', 'BB_Lower', 'Volume']
 NUM_FEATURES = len(FEATURE_COLUMNS)
 
 def compute_features(df):
     """
-    从原始 OHLCV 数据计算 7 维技术指标特征
+    Compute 7-dimensional technical indicator features from raw OHLCV data.
     """
     df = df.copy()
-    
-    # --- RSI (14日) ---
+
+    # --- RSI (14-day) ---
     delta = df['Close'].diff()
     gain = delta.where(delta > 0, 0.0)
     loss = -delta.where(delta < 0, 0.0)
@@ -36,7 +36,7 @@ def compute_features(df):
     df['MACD'] = ema12 - ema26
     df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
     
-    # --- 布林带 (20日) ---
+    # --- Bollinger Bands (20-day) ---
     sma20 = df['Close'].rolling(window=20, min_periods=1).mean()
     std20 = df['Close'].rolling(window=20, min_periods=1).std().fillna(0)
     df['BB_Upper'] = sma20 + 2 * std20
@@ -46,13 +46,13 @@ def compute_features(df):
     if 'Volume' not in df.columns or df['Volume'].sum() == 0:
         df['Volume'] = 0
         
-    # 清除 NaN（EMA 等计算初期会产生）
+    # drop NaN rows produced during initial EMA/rolling calculations
     df = df.dropna()
     
     return df[FEATURE_COLUMNS]
 
 
-# ==================== 数据集 ====================
+# ==================== Dataset ====================
 
 class GoldDataset(Dataset):
     def __init__(self, x, y):
@@ -66,7 +66,7 @@ class GoldDataset(Dataset):
         return self.x[idx], self.y[idx]
 
 
-# ==================== LSTM 模型 ====================
+# ==================== LSTM Model ====================
 
 class GoldLSTM(nn.Module):
     def __init__(self, input_size=NUM_FEATURES, hidden_size=128, num_layers=2, dropout=0.2):
@@ -91,56 +91,57 @@ class GoldLSTM(nn.Module):
         return out
 
 
-# ==================== 数据准备 ====================
+# ==================== Data Preparation ====================
 
 def prepare_data(sequence_length=60, commodity_key="gold"):
     """
-    从本地 CSV 加载数据，计算多维技术指标，构建滑动窗口数据集
+    Load data from local CSV, compute multi-dimensional technical indicators,
+    and build a sliding-window dataset.
     """
     if commodity_key == "gold":
         csv_name = "gc_f_full_history.csv"
     else:
         csv_name = f"{commodity_key}_full_history.csv"
     csv_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", csv_name)
-    print(f"正在从本地 CSV 加载 {commodity_key} 历史数据: {csv_file}")
+    print(f"Loading {commodity_key} historical data from local CSV: {csv_file}")
 
     if not os.path.exists(csv_file):
         raise FileNotFoundError(
-            f"未找到本地 CSV 数据。请先运行: python dl/download_history.py --commodity {commodity_key}"
+            f"Local CSV not found. Please run first: python dl/download_history.py --commodity {commodity_key}"
         )
         
     df = pd.read_csv(csv_file, index_col=0, parse_dates=True)
     
-    # 计算 7 维特征
-    print(f"正在计算 {NUM_FEATURES} 维技术指标特征: {FEATURE_COLUMNS}")
+    # compute features
+    print(f"Computing {NUM_FEATURES}-dimensional technical indicator features: {FEATURE_COLUMNS}")
     features_df = compute_features(df)
     data = features_df.values  # shape: (N, 7)
-    
-    # 对每个特征列分别做 MinMaxScaler
+
+    # apply MinMaxScaler independently to each feature column
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(data)
-    
-    # 收盘价在第 0 列，用于构建 Y 标签
+
+    # Close price is column 0; used as the Y label
     x_data, y_data = [], []
     for i in range(sequence_length, len(scaled_data)):
         x_data.append(scaled_data[i-sequence_length:i, :])   # (seq_len, 7)
-        y_data.append(scaled_data[i, 0])                     # 预测下一天收盘价
-        
+        y_data.append(scaled_data[i, 0])                     # predict next-day close price
+
     x_data, y_data = np.array(x_data), np.array(y_data)
-    
-    # 80/20 拆分
+
+    # 80/20 train/test split
     train_size = int(len(x_data) * 0.8)
     x_train, y_train = x_data[:train_size], y_data[:train_size]
     x_test, y_test = x_data[train_size:], y_data[train_size:]
-    
-    print(f"数据集构建完成: 训练集 {len(x_train)} 条, 测试集 {len(x_test)} 条, 特征维度 {NUM_FEATURES}")
+
+    print(f"Dataset built: {len(x_train)} train samples, {len(x_test)} test samples, {NUM_FEATURES} features")
     return x_train, y_train, x_test, y_test, scaler
 
 
-# ==================== 训练函数 ====================
+# ==================== Training Function ====================
 
 def train_model(model_type="lstm", epochs=30, commodity_key="gold"):
-    print(f"=== 开始 {model_type.upper()} 多维特征深度学习训练 (品种: {commodity_key}, 设备: {device}) ===")
+    print(f"=== Starting {model_type.upper()} multi-feature deep learning training (commodity: {commodity_key}, device: {device}) ===")
 
     seq_length = 60
     x_train, y_train, x_test, y_test, scaler = prepare_data(
@@ -153,7 +154,7 @@ def train_model(model_type="lstm", epochs=30, commodity_key="gold"):
     test_dataset = GoldDataset(x_test, y_test)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
-    # 初始化模型
+    # initialise model
     if model_type == "lstm":
         model = GoldLSTM(input_size=NUM_FEATURES).to(device)
         weight_file = f"{commodity_key}_lstm_weights.pth"
@@ -162,19 +163,19 @@ def train_model(model_type="lstm", epochs=30, commodity_key="gold"):
         model = GoldTransformer(input_size=NUM_FEATURES, seq_length=seq_length).to(device)
         weight_file = f"{commodity_key}_transformer_weights.pth"
     else:
-        raise ValueError(f"未知的模型类型: {model_type}")
+        raise ValueError(f"Unknown model type: {model_type}")
     
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
     
-    print(f"模型参数量: {sum(p.numel() for p in model.parameters()):,}")
-    print(f"开始训练 {epochs} 轮...")
+    print(f"Model parameter count: {sum(p.numel() for p in model.parameters()):,}")
+    print(f"Starting training for {epochs} epochs...")
     
     best_test_loss = float('inf')
     
     for epoch in range(epochs):
-        # 训练
+        # training pass
         model.train()
         train_loss = 0.0
         for x_batch, y_batch in train_loader:
@@ -188,7 +189,7 @@ def train_model(model_type="lstm", epochs=30, commodity_key="gold"):
             train_loss += loss.item() * x_batch.size(0)
         train_loss /= len(train_loader.dataset)
         
-        # 验证
+        # validation pass
         model.eval()
         test_loss = 0.0
         with torch.no_grad():
@@ -207,9 +208,9 @@ def train_model(model_type="lstm", epochs=30, commodity_key="gold"):
         if test_loss < best_test_loss:
             best_test_loss = test_loss
     
-    print(f"训练完毕！最佳测试 Loss: {best_test_loss:.6f}")
-    
-    # 保存
+    print(f"Training complete. Best test loss: {best_test_loss:.6f}")
+
+    # save weights and scaler
     model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
     os.makedirs(model_dir, exist_ok=True)
     
@@ -221,15 +222,15 @@ def train_model(model_type="lstm", epochs=30, commodity_key="gold"):
     with open(os.path.join(model_dir, scaler_name), "wb") as f:
         pickle.dump(scaler, f)
 
-    print(f"模型权重 [{weight_file}] 与 Scaler [{scaler_name}] 已保存至 {model_dir}/")
+    print(f"Model weights [{weight_file}] and scaler [{scaler_name}] saved to {model_dir}/")
     return best_test_loss
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="训练期货价格预测模型")
-    parser.add_argument("--commodity", default="gold", help="品种 key（如 gold, silver, copper）")
-    parser.add_argument("--model", default="lstm", choices=["lstm", "transformer"], help="模型类型")
-    parser.add_argument("--epochs", type=int, default=30, help="训练轮数")
+    parser = argparse.ArgumentParser(description="Train a futures price prediction model")
+    parser.add_argument("--commodity", default="gold", help="commodity key (e.g. gold, silver, copper)")
+    parser.add_argument("--model", default="lstm", choices=["lstm", "transformer"], help="model type")
+    parser.add_argument("--epochs", type=int, default=30, help="number of training epochs")
     args = parser.parse_args()
     train_model(model_type=args.model, epochs=args.epochs, commodity_key=args.commodity)

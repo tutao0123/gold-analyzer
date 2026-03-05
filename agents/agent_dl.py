@@ -10,29 +10,29 @@ class DLPredictorAgent(LLMAgent):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # 在 Agent 初始化时预加载模型权重，避免每次 reply() 重复读取磁盘
-        print(f"  [{self.__class__.__name__}] 预加载深度学习模型权重...")
+        # pre-load model weights at agent init time to avoid re-reading disk on every reply()
+        print(f"  [{self.__class__.__name__}] Pre-loading deep learning model weights...")
         self._predictor = DLPredictor(commodity_key=self.commodity["key"])
         self._backtester = Backtester(model_type="lstm", commodity_key=self.commodity["key"])
 
     def reply(self, x=None):
         if x is None:
             return super().reply(x)
-        print(f"\n[{self.name}] 正在调用多维特征深度学习引擎进行推演 ...")
+        print(f"\n[{self.name}] Running multi-feature deep learning engine for inference ...")
         try:
-            # 使用预加载的模型进行预测
+            # use the pre-loaded model to generate predictions
             dl_result = self._predictor.predict_next_day()
 
-            # 附带回测绩效，帮助首席策略官评估模型可信度
+            # include backtest performance to help the chief strategist assess model credibility
             try:
                 backtest_summary = self._backtester.get_summary_for_agent(test_days=250)
                 dl_result += f"\n\n{backtest_summary}"
             except Exception as e:
-                logger.warning(f"回测摘要获取失败（不影响主预测）: {e}")
+                logger.warning(f"Failed to retrieve backtest summary (does not affect main prediction): {e}")
 
             msg = Msg(name=x.name, role=x.role, content=dl_result)
             return super().reply(msg)
         except Exception as e:
-            logger.error(f"深度学习引擎异常: {e}", exc_info=True)
-            msg = Msg(name=x.name, role=x.role, content=f"深度学习引擎异常：{e}")
+            logger.error(f"Deep learning engine error: {e}", exc_info=True)
+            msg = Msg(name=x.name, role=x.role, content=f"Deep learning engine error: {e}")
             return super().reply(msg)

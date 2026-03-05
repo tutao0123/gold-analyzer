@@ -1,18 +1,19 @@
 """
-风控合规官：对首席策略官的决策进行独立审核
-检查仓位是否超限、止损是否合理、是否与历史亏损模式雷同
+Risk & compliance officer: independently reviews the chief strategist's decisions,
+checking whether positions exceed limits, whether stop-losses are reasonable,
+and whether the trade resembles historical loss patterns.
 """
 from agents.base_agent import LLMAgent, Msg
 
 
 class RiskControlAgent(LLMAgent):
     """
-    风控合规官在首席策略官做出决策后进行独立审计。
-    他不参与前期讨论，而是在最终决策出来后进行"合规审查"。
+    Performs an independent audit of the chief strategist's decision after it is made.
+    Does not participate in earlier discussions; only conducts a compliance review at the end.
     """
     def reply(self, x: dict = None) -> dict:
         if x is None: return super().reply(x)
-        print(f"\n[{self.name}] 正在对首席策略官的决策进行独立风控审查...")
+        print(f"\n[{self.name}] Running independent risk-control review of chief strategist's decision...")
         
         content = x.content if hasattr(x, 'content') else str(x)
         

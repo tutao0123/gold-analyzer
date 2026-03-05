@@ -1,13 +1,14 @@
 """
-宏观基本面分析师：抓取收益率曲线、债券市场等硬数据，
-再通过 LLM 联网搜索补充美联储政策、经济数据、地缘政治最新动态。
+Macro fundamental analyst: fetches hard data such as the yield curve and bond
+markets, then uses LLM web search to supplement the latest Fed policy,
+economic data, and geopolitical developments.
 """
 import logging
 from agents.base_agent import LLMAgent, Msg
 
 logger = logging.getLogger(__name__)
 
-# 宏观指标：关注收益率曲线、债券市场、风险偏好
+# Macro indicators: yield curve, bond markets, risk appetite
 _MACRO_TICKERS = {
     "^IRX":  "美国3个月国债收益率(短端)",
     "^FVX":  "美国5年期国债收益率",
@@ -20,7 +21,7 @@ _MACRO_TICKERS = {
 
 
 def _fetch_macro_data() -> str:
-    """用 yfinance 抓取宏观硬数据，返回格式化字符串。失败时返回空字符串。"""
+    """Fetch hard macro data via yfinance and return a formatted string. Returns empty string on failure."""
     try:
         import yfinance as yf
         import pandas as pd
@@ -37,12 +38,12 @@ def _fetch_macro_data() -> str:
                 chg    = (latest - prev) / prev * 100
                 lines.append(f"  {name}: {latest:.3f} ({chg:+.2f}%)")
             except Exception as e:
-                logger.debug(f"跳过 {ticker}: {e}")
+                logger.debug(f"Skipping {ticker}: {e}")
 
         if not lines:
             return ""
 
-        # 收益率曲线形态分析
+        # yield curve shape analysis
         try:
             irx_df  = yf.download("^IRX",  period="2d", progress=False, auto_adjust=True)
             tnx_df  = yf.download("^TNX",  period="2d", progress=False, auto_adjust=True)
@@ -65,21 +66,21 @@ def _fetch_macro_data() -> str:
     except ImportError:
         return ""
     except Exception as e:
-        logger.warning(f"宏观数据抓取失败: {e}")
+        logger.warning(f"Failed to fetch macro data: {e}")
         return ""
 
 
 class MacroAnalystAgent(LLMAgent):
     """
-    宏观基本面分析师：先用 yfinance 抓取收益率曲线等硬数据，
-    再让 LLM 联网补充美联储政策、经济数据、地缘政治最新动态。
+    Macro fundamental analyst: first fetches hard data (yield curve, etc.) via yfinance,
+    then lets the LLM supplement with the latest Fed policy, economic releases, and geopolitics.
     """
 
     def reply(self, x=None):
         if x is None:
             return super().reply(x)
 
-        print(f"\n[{self.name}] 正在抓取宏观经济硬数据 (收益率曲线/债券/风险偏好)...")
+        print(f"\n[{self.name}] Fetching hard macro data (yield curve / bonds / risk appetite)...")
         macro_data = _fetch_macro_data()
 
         query = x.content if hasattr(x, "content") else str(x)

@@ -1,6 +1,6 @@
 """
-通用商品数据下载器
-支持多种商品期货、股票指数、外汇等数据的下载
+Generic commodity data downloader.
+Supports downloading historical data for commodity futures, stock indices, forex, and more.
 """
 
 import os
@@ -18,37 +18,37 @@ logger = logging.getLogger(__name__)
 
 
 class CommodityDataDownloader:
-    """通用商品数据下载器"""
+    """Generic commodity data downloader."""
 
     def __init__(self, data_dir: str = None):
         """
-        初始化下载器
+        Initialise the downloader.
 
         Args:
-            data_dir: 数据存储目录，默认使用配置中的 DATA_DIR
+            data_dir: directory for storing data; defaults to DATA_DIR from config
         """
         self.data_dir = data_dir or DATA_DIR
         os.makedirs(self.data_dir, exist_ok=True)
         self.symbols = COMMODITY_SYMBOLS
 
     def get_available_commodities(self) -> Dict[str, dict]:
-        """获取所有可用的商品列表"""
+        """Return a copy of all available commodities."""
         return self.symbols.copy()
 
     def list_commodities(self) -> None:
-        """打印所有可用的商品"""
-        print("\n=== 可下载的商品列表 ===\n")
+        """Print all available commodities grouped by category."""
+        print("\n=== Available commodities ===\n")
         categories = {
-            "贵金属": ["gold", "silver", "platinum", "palladium"],
-            "原油能源": ["wti_oil", "brent_oil", "natural_gas"],
-            "农产品": ["corn", "wheat", "soybean"],
-            "股票指数": ["sp500", "nasdaq", "vix"],
-            "外汇": ["dxy"],
-            "债券收益率": ["tnx"],
+            "Precious Metals": ["gold", "silver", "platinum", "palladium"],
+            "Crude Oil & Energy": ["wti_oil", "brent_oil", "natural_gas"],
+            "Agricultural": ["corn", "wheat", "soybean"],
+            "Equity Indices": ["sp500", "nasdaq", "vix"],
+            "Forex": ["dxy"],
+            "Bond Yields": ["tnx"],
         }
 
         for category, items in categories.items():
-            print(f"【{category}】")
+            print(f"[{category}]")
             for key in items:
                 if key in self.symbols:
                     info = self.symbols[key]
@@ -64,28 +64,28 @@ class CommodityDataDownloader:
         end: str = None,
     ) -> Optional[pd.DataFrame]:
         """
-        下载单个商品的历史数据
+        Download historical data for a single commodity.
 
         Args:
-            commodity_key: 商品键名 (如 'gold', 'wti_oil')
-            period: 时间周期 ('1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max')
-            interval: 时间间隔 ('1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo')
-            start: 开始日期 (YYYY-MM-DD)
-            end: 结束日期 (YYYY-MM-DD)
+            commodity_key: commodity key (e.g. 'gold', 'wti_oil')
+            period:        time period ('1d','5d','1mo','3mo','6mo','1y','2y','5y','10y','ytd','max')
+            interval:      bar interval ('1m','2m','5m','15m','30m','60m','90m','1h','1d','5d','1wk','1mo','3mo')
+            start:         start date (YYYY-MM-DD)
+            end:           end date   (YYYY-MM-DD)
 
         Returns:
-            DataFrame 或 None
+            DataFrame or None
         """
         if commodity_key not in self.symbols:
-            logger.error(f"未知的商品键名: {commodity_key}")
-            logger.info(f"可用键名: {list(self.symbols.keys())}")
+            logger.error(f"Unknown commodity key: {commodity_key}")
+            logger.info(f"Available keys: {list(self.symbols.keys())}")
             return None
 
         symbol_info = self.symbols[commodity_key]
         symbol = symbol_info["symbol"]
         name = symbol_info["name"]
 
-        logger.info(f"正在下载 {name} ({symbol}) 数据...")
+        logger.info(f"Downloading {name} ({symbol})...")
 
         try:
             if start and end:
@@ -94,22 +94,22 @@ class CommodityDataDownloader:
                 df = yf.download(symbol, period=period, interval=interval)
 
             if df.empty:
-                logger.warning(f"{name} 数据为空")
+                logger.warning(f"{name} returned empty data")
                 return None
 
-            # 处理多重索引
+            # flatten multi-level column index
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.droplevel(1)
 
-            # 清理数据
+            # drop rows with missing close
             df = df.dropna(subset=["Close"])
 
-            logger.info(f"下载成功: {len(df)} 条记录, 时间范围: {df.index[0].strftime('%Y-%m-%d')} 至 {df.index[-1].strftime('%Y-%m-%d')}")
+            logger.info(f"Downloaded {len(df)} records: {df.index[0].strftime('%Y-%m-%d')} to {df.index[-1].strftime('%Y-%m-%d')}")
 
             return df
 
         except Exception as e:
-            logger.error(f"下载 {name} 数据失败: {e}")
+            logger.error(f"Failed to download {name}: {e}")
             return None
 
     def download_and_save(
@@ -120,16 +120,16 @@ class CommodityDataDownloader:
         filename: str = None,
     ) -> Optional[str]:
         """
-        下载数据并保存到CSV文件
+        Download data and save to a CSV file.
 
         Args:
-            commodity_key: 商品键名
-            period: 时间周期
-            interval: 时间间隔
-            filename: 自定义文件名，默认自动生成
+            commodity_key: commodity key
+            period:        time period
+            interval:      bar interval
+            filename:      custom filename; auto-generated if not provided
 
         Returns:
-            保存的文件路径，失败返回 None
+            saved file path, or None on failure
         """
         df = self.download_single(commodity_key, period, interval)
         if df is None:
@@ -137,14 +137,14 @@ class CommodityDataDownloader:
 
         symbol_info = self.symbols[commodity_key]
         if filename is None:
-            # 使用符号作为文件名 (如 GC=F -> gc_f.csv)
+            # derive filename from symbol (e.g. GC=F → gc_f.csv)
             safe_symbol = symbol_info["symbol"].replace("^", "").replace("=", "_").replace("-", "_").lower()
             filename = f"{safe_symbol}.csv"
 
         filepath = os.path.join(self.data_dir, filename)
         df.to_csv(filepath)
 
-        logger.info(f"数据已保存: {filepath}")
+        logger.info(f"Data saved: {filepath}")
 
         return filepath
 
@@ -156,22 +156,22 @@ class CommodityDataDownloader:
         save_to_file: bool = True,
     ) -> Dict[str, pd.DataFrame]:
         """
-        批量下载多个商品数据
+        Download data for multiple commodities.
 
         Args:
-            commodity_keys: 商品键名列表
-            period: 时间周期
-            interval: 时间间隔
-            save_to_file: 是否保存到文件
+            commodity_keys: list of commodity keys
+            period:         time period
+            interval:       bar interval
+            save_to_file:   whether to save each download to a CSV
 
         Returns:
-            字典 {commodity_key: DataFrame}
+            dict {commodity_key: DataFrame}
         """
         results = {}
 
         for key in commodity_keys:
             if key not in self.symbols:
-                logger.warning(f"跳过未知商品: {key}")
+                logger.warning(f"Skipping unknown commodity: {key}")
                 continue
 
             if save_to_file:
@@ -191,26 +191,26 @@ class CommodityDataDownloader:
         interval: str = "1d",
     ) -> Dict[str, str]:
         """
-        下载所有商品数据
+        Download data for all commodities.
 
         Args:
-            period: 时间周期
-            interval: 时间间隔
+            period:   time period
+            interval: bar interval
 
         Returns:
-            字典 {commodity_key: filepath}
+            dict {commodity_key: filepath}
         """
         results = {}
         total = len(self.symbols)
 
         for idx, key in enumerate(self.symbols.keys(), 1):
-            logger.info(f"\n[{idx}/{total}] 正在处理: {key}")
+            logger.info(f"\n[{idx}/{total}] Processing: {key}")
             filepath = self.download_and_save(key, period, interval)
             if filepath:
                 results[key] = filepath
 
-        logger.info(f"\n=== 下载完成 ===")
-        logger.info(f"成功: {len(results)}/{total}")
+        logger.info(f"\n=== Download complete ===")
+        logger.info(f"Success: {len(results)}/{total}")
 
         return results
 
@@ -219,7 +219,7 @@ class CommodityDataDownloader:
         period: str = "max",
         interval: str = "1d",
     ) -> Dict[str, pd.DataFrame]:
-        """下载能源类商品数据 (原油、天然气)"""
+        """Download energy commodities (crude oil, natural gas)."""
         energy_keys = ["wti_oil", "brent_oil", "natural_gas"]
         return self.download_multiple(energy_keys, period, interval)
 
@@ -228,7 +228,7 @@ class CommodityDataDownloader:
         period: str = "max",
         interval: str = "1d",
     ) -> Dict[str, pd.DataFrame]:
-        """下载贵金属数据 (黄金、白银、铂金、钯金)"""
+        """Download precious metals (gold, silver, platinum, palladium)."""
         metal_keys = ["gold", "silver", "platinum", "palladium"]
         return self.download_multiple(metal_keys, period, interval)
 
@@ -237,7 +237,7 @@ class CommodityDataDownloader:
         period: str = "max",
         interval: str = "1d",
     ) -> Dict[str, pd.DataFrame]:
-        """下载股票指数数据"""
+        """Download equity index data."""
         index_keys = ["sp500", "nasdaq", "vix"]
         return self.download_multiple(index_keys, period, interval)
 
@@ -248,30 +248,30 @@ class CommodityDataDownloader:
         method: str = "pearson",
     ) -> Optional[pd.DataFrame]:
         """
-        计算多个商品之间的价格相关性
+        Compute price correlation between multiple commodities.
 
         Args:
-            commodity_keys: 商品键名列表
-            period: 时间周期
-            method: 相关性计算方法 ('pearson', 'kendall', 'spearman')
+            commodity_keys: list of commodity keys
+            period:         time period
+            method:         correlation method ('pearson', 'kendall', 'spearman')
 
         Returns:
-            相关性矩阵 DataFrame
+            correlation matrix DataFrame
         """
-        # 下载数据
+        # download data
         data = self.download_multiple(commodity_keys, period, save_to_file=False)
         if not data:
             return None
 
-        # 提取收盘价
+        # extract close prices
         close_prices = pd.DataFrame()
         for key, df in data.items():
             close_prices[key] = df["Close"]
 
-        # 计算收益率
+        # compute returns
         returns = close_prices.pct_change().dropna()
 
-        # 计算相关性矩阵
+        # compute correlation matrix
         correlation = returns.corr(method=method)
 
         return correlation
@@ -281,83 +281,44 @@ class CommodityDataDownloader:
         period: str = "max",
     ) -> Optional[pd.DataFrame]:
         """
-        计算黄金/原油比价
+        Compute gold-to-oil price ratio.
 
         Returns:
-            DataFrame 包含日期、金价、油价、比价
+            DataFrame with date, gold price, oil price, and ratio
         """
-        # 下载黄金和原油数据
+        # download gold and oil data
         gold_df = self.download_single("gold", period)
         oil_df = self.download_single("wti_oil", period)
 
         if gold_df is None or oil_df is None:
             return None
 
-        # 合并数据
+        # merge
         merged = pd.DataFrame()
         merged["gold"] = gold_df["Close"]
         merged["oil"] = oil_df["Close"]
         merged = merged.dropna()
 
-        # 计算比价
+        # compute ratio
         merged["gold_oil_ratio"] = merged["gold"] / merged["oil"]
 
         return merged
 
 
 def main():
-    """命令行入口"""
+    """CLI entry point."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="通用商品数据下载器")
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="列出所有可用的商品",
-    )
-    parser.add_argument(
-        "--download",
-        type=str,
-        nargs="+",
-        help="下载指定商品数据 (如: gold wti_oil brent_oil)",
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="下载所有商品数据",
-    )
-    parser.add_argument(
-        "--metals",
-        action="store_true",
-        help="下载贵金属数据",
-    )
-    parser.add_argument(
-        "--energy",
-        action="store_true",
-        help="下载能源数据 (原油、天然气)",
-    )
-    parser.add_argument(
-        "--indices",
-        action="store_true",
-        help="下载股票指数数据",
-    )
-    parser.add_argument(
-        "--correlation",
-        type=str,
-        nargs="+",
-        help="计算指定商品之间的相关性 (如: gold wti_oil dxy)",
-    )
-    parser.add_argument(
-        "--gold-oil-ratio",
-        action="store_true",
-        help="计算黄金/原油比价",
-    )
-    parser.add_argument(
-        "--period",
-        type=str,
-        default="max",
-        help="时间周期 (默认: max)",
-    )
+    parser = argparse.ArgumentParser(description="Generic commodity data downloader")
+    parser.add_argument("--list", action="store_true", help="list all available commodities")
+    parser.add_argument("--download", type=str, nargs="+", help="download specified commodities (e.g. gold wti_oil)")
+    parser.add_argument("--all", action="store_true", help="download all commodities")
+    parser.add_argument("--metals", action="store_true", help="download precious metals")
+    parser.add_argument("--energy", action="store_true", help="download energy commodities (crude oil, natural gas)")
+    parser.add_argument("--indices", action="store_true", help="download equity indices")
+    parser.add_argument("--correlation", type=str, nargs="+", help="compute correlation between commodities (e.g. gold wti_oil dxy)")
+    parser.add_argument("--gold-oil-ratio", action="store_true", help="compute gold/oil price ratio")
+    parser.add_argument("--period", type=str, default="max", help="time period (default: max)")
 
     args = parser.parse_args()
     downloader = CommodityDataDownloader()
@@ -377,26 +338,26 @@ def main():
     elif args.correlation:
         corr = downloader.get_correlation(args.correlation, period=args.period)
         if corr is not None:
-            print("\n=== 价格相关性矩阵 ===\n")
+            print("\n=== Price Correlation Matrix ===\n")
             print(corr.round(3))
     elif args.gold_oil_ratio:
         ratio = downloader.get_gold_oil_ratio(period=args.period)
         if ratio is not None:
-            print("\n=== 黄金/原油比价 ===\n")
-            print(f"最新数据: {ratio.index[-1].strftime('%Y-%m-%d')}")
-            print(f"金价: ${ratio['gold'].iloc[-1]:.2f}")
-            print(f"油价: ${ratio['oil'].iloc[-1]:.2f}")
-            print(f"比价: {ratio['gold_oil_ratio'].iloc[-1]:.2f}")
+            print("\n=== Gold/Oil Ratio ===\n")
+            print(f"Latest date: {ratio.index[-1].strftime('%Y-%m-%d')}")
+            print(f"Gold:  ${ratio['gold'].iloc[-1]:.2f}")
+            print(f"Oil:   ${ratio['oil'].iloc[-1]:.2f}")
+            print(f"Ratio: {ratio['gold_oil_ratio'].iloc[-1]:.2f}")
     else:
-        # 默认显示帮助
+        # default: show help
         downloader.list_commodities()
-        print("\n使用示例:")
-        print("  python dl/commodity_downloader.py --list                    # 列出所有商品")
-        print("  python dl/commodity_downloader.py --download gold wti_oil  # 下载黄金和WTI原油")
-        print("  python dl/commodity_downloader.py --energy                 # 下载所有能源数据")
-        print("  python dl/commodity_downloader.py --all                    # 下载所有商品")
-        print("  python dl/commodity_downloader.py --correlation gold wti_oil dxy  # 计算相关性")
-        print("  python dl/commodity_downloader.py --gold-oil-ratio         # 黄金/原油比价")
+        print("\nUsage examples:")
+        print("  python dl/commodity_downloader.py --list                    # list all commodities")
+        print("  python dl/commodity_downloader.py --download gold wti_oil  # download gold and WTI crude")
+        print("  python dl/commodity_downloader.py --energy                 # download all energy data")
+        print("  python dl/commodity_downloader.py --all                    # download everything")
+        print("  python dl/commodity_downloader.py --correlation gold wti_oil dxy  # compute correlation")
+        print("  python dl/commodity_downloader.py --gold-oil-ratio         # gold/oil ratio")
 
 
 if __name__ == "__main__":

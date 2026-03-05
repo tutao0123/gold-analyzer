@@ -1,5 +1,6 @@
 """
-跨市场联动分析师：追踪美元指数、美债收益率、原油、VIX 与黄金的联动关系
+Cross-market correlation analyst: tracks the linkage between the dollar index,
+US Treasury yields, crude oil, VIX, and gold.
 """
 import os
 import sys
@@ -10,13 +11,13 @@ from agents.base_agent import LLMAgent, Msg
 class CrossMarketAgent(LLMAgent):
     def reply(self, x: dict = None) -> dict:
         if x is None: return super().reply(x)
-        print(f"\n[{self.name}] 正在抓取跨市场联动数据 (DXY/美债/VIX/原油)...")
+        print(f"\n[{self.name}] Fetching cross-market correlation data (DXY/Treasuries/VIX/Crude)...")
         
         try:
             import yfinance as yf
             import pandas as pd
             
-            # 抓取关联品种最近 5 天的数据
+            # fetch the last 5 days of data for correlated instruments
             tickers = {
                 "DX-Y.NYB": "美元指数(DXY)",
                 "^TNX": "美国10年期国债收益率",
@@ -43,7 +44,7 @@ class CrossMarketAgent(LLMAgent):
             
             cross_data = "【跨市场联动实时数据】\n" + "\n".join(data_lines)
             
-            # 附加分析提示
+            # append analysis prompt
             prompt = (
                 f"【工作指令】以下是跨市场联动数据：\n{cross_data}\n\n"
                 "请你作为跨市场联动分析师，分析以上品种之间的联动关系对黄金的影响。"

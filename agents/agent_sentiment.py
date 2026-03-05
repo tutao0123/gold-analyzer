@@ -1,6 +1,7 @@
 """
-情绪分析师：利用大模型联网能力搜索社交媒体和论坛上的黄金讨论情绪
-判断散户是极度贪婪还是恐慌，提供反向指标参考
+Sentiment analyst: uses the LLM's web-search capability to scan social media
+and forums for gold-related sentiment, determining whether retail traders are
+extremely greedy or fearful, and providing contrarian indicator references.
 """
 from agents.base_agent import LLMAgent, Msg
 
@@ -8,7 +9,7 @@ from agents.base_agent import LLMAgent, Msg
 class SentimentAgent(LLMAgent):
     def reply(self, x: dict = None) -> dict:
         if x is None: return super().reply(x)
-        print(f"\n[{self.name}] 正在通过联网搜索分析市场情绪面...")
+        print(f"\n[{self.name}] Analysing market sentiment via web search...")
         
         query = x.content if hasattr(x, 'content') else str(x)
         

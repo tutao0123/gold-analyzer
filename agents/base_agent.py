@@ -1,6 +1,6 @@
 """
-轻量级 LLM Agent 基类，替代 agentscope.agents.DialogAgent。
-直接通过 DashScope 的 OpenAI 兼容接口调用大模型。
+Lightweight LLM Agent base class, replacing agentscope.agents.DialogAgent.
+Calls the large model directly via DashScope's OpenAI-compatible interface.
 """
 import os
 import logging
@@ -23,10 +23,10 @@ class Msg:
 
 class LLMAgent:
     """
-    轻量级对话智能体基类。
+    Lightweight conversational agent base class.
 
-    子类通过重写 reply() 在调用 LLM 前后插入自定义逻辑；
-    需要调用 LLM 时执行 super().reply(msg)。
+    Subclasses override reply() to insert custom logic before/after calling
+    the LLM; call super().reply(msg) when an LLM call is needed.
     """
 
     def __init__(
@@ -49,7 +49,7 @@ class LLMAgent:
         )
 
     def _call_llm(self, user_content: str) -> str:
-        """调用 LLM，返回文本回复。"""
+        """Call the LLM and return its text response."""
         messages = [
             {"role": "system", "content": self.sys_prompt},
             {"role": "user", "content": user_content},
@@ -61,13 +61,14 @@ class LLMAgent:
             resp = self._client.chat.completions.create(**kwargs)
             return resp.choices[0].message.content or ""
         except Exception as e:
-            logger.error(f"[{self.name}] LLM 调用失败: {e}", exc_info=True)
+            logger.error(f"[{self.name}] LLM call failed: {e}", exc_info=True)
             raise
 
     def reply(self, x) -> Msg:
         """
-        基类实现：用 x.content 作为用户消息调用 LLM，返回 Msg。
-        若 x 是 Msg 列表，则拼接所有内容后调用。
+        Base implementation: calls the LLM with x.content as the user message
+        and returns a Msg. If x is a list of Msg objects, concatenates all
+        contents before calling.
         """
         if x is None:
             return Msg(name=self.name, role="assistant", content="")

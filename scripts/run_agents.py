@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# 设置工作目录
+# add project root to module search path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.base_agent import Msg
@@ -12,7 +12,7 @@ from core.config import REPORT_DIR, COMMODITY_SYMBOLS, ANALYZABLE_COMMODITIES
 
 
 def _select_commodity() -> dict:
-    """展示品种选择菜单，返回选定的 commodity 字典（含 key 字段）。"""
+    """Display the commodity selection menu and return the chosen commodity dict (with 'key' field)."""
     print("\n可分析品种：")
     options = []
     for key in ANALYZABLE_COMMODITIES:
@@ -47,7 +47,7 @@ def _select_commodity() -> dict:
 
 
 def _save_report(commodity: dict, user_question: str, round1_replies: list, pm_reply, risk_reply) -> str:
-    """将本次分析结果保存到 reports/ 目录，返回文件路径。"""
+    """Save the analysis results to the reports/ directory and return the file path."""
     os.makedirs(REPORT_DIR, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filepath = os.path.join(REPORT_DIR, f"analysis_{timestamp}.txt")
@@ -71,24 +71,24 @@ def _save_report(commodity: dict, user_question: str, round1_replies: list, pm_r
 
 
 def main():
-    print("=== 初始化 AgentScope 与期货分析智能体框架 (多角色版) ===")
+    print("=== Initialising multi-agent futures analysis framework ===")
 
     api_key = os.getenv("DASHSCOPE_API_KEY")
     if not api_key:
-        print("错误：请先设置 DASHSCOPE_API_KEY 环境变量")
+        print("Error: DASHSCOPE_API_KEY environment variable is not set.")
         return
 
-    # 品种选择
+    # commodity selection
     commodity = _select_commodity()
     cname = commodity["name"]
 
     _model = "qwen-plus"
     _kw = dict(model_name=_model, api_key=api_key, commodity=commodity)
 
-    print("=== 正在加载本地多模态图文库 ===")
+    print("=== Loading local multimodal RAG store ===")
     rag = GoldMultimodalRAG()
 
-    # ---------------- 导入各领域专属智能体 ----------------
+    # ---------------- import domain-specific agents ----------------
     from agents import (
         RAGAnalystAgent, MacroAnalystAgent, QuantEngineerAgent,
         DLPredictorAgent, PortfolioManagerAgent,
@@ -139,7 +139,7 @@ def main():
         **_kw
     )
 
-    # ================= 接收用户问题 =================
+    # ================= receive user question =================
     default_question = f"关注到今天行情异动，看看最近{cname}走势，有没有类似头肩底？帮我全面诊脉。"
     try:
         user_input = input(f"\n请输入分析问题（直接回车使用默认）:\n> ").strip()
@@ -150,7 +150,7 @@ def main():
 
     user_issue = Msg(name="Manager", content=question, role="user")
 
-    # ================= 第一轮：6 位专家并行报告 =================
+    # ================= round 1: 6 specialists report in parallel =================
     print("\n=== 圆桌会议开始 (8位专家) ===")
     print("\n--- 第一轮：各领域专家独立报告（并行执行）---")
 
@@ -183,17 +183,17 @@ def main():
                 round1_replies[idx] = fallback
                 print(f"\n[{agent.name}] 报告失败: {e}")
 
-    # ================= 第二轮：首席策略官综合决策 =================
+    # ================= round 2: chief strategist synthesises =================
     print("\n--- 第二轮：首席策略官综合研判 ---")
     pm_reply = pm_agent(round1_replies)
     print(f"\n{'=' * 50}\n[首席策略官 最终决议]:\n{pm_reply.content}\n{'=' * 50}")
 
-    # ================= 第三轮：风控合规官独立审查 =================
+    # ================= round 3: risk officer independent review =================
     print("\n--- 第三轮：风控合规官独立审查 ---")
     risk_reply = risk_agent(pm_reply)
     print(f"\n{'=' * 50}\n[风控合规官 审查结论]:\n{risk_reply.content}\n{'=' * 50}")
 
-    # ================= 保存报告 =================
+    # ================= save report =================
     try:
         saved_path = _save_report(commodity, question, round1_replies, pm_reply, risk_reply)
         print(f"\n报告已保存至: {saved_path}")

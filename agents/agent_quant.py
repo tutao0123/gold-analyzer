@@ -11,7 +11,7 @@ class QuantEngineerAgent(LLMAgent):
     def reply(self, x: dict = None) -> dict:
         if x is None:
             return super().reply(x)
-        print(f"\n[{self.name}] 正在调用 analyzer.py 计算本地行情指标 ...")
+        print(f"\n[{self.name}] Calling analyzer.py to compute local market indicators ...")
         try:
             ticker = self.commodity["symbol"]
             df = yf.download(ticker, period="40d", interval="1d", progress=False, auto_adjust=True)
@@ -19,11 +19,11 @@ class QuantEngineerAgent(LLMAgent):
             if df.empty:
                 return Msg(name=self.name, role="assistant", content=f"【量化指标获取失败】yfinance 返回空数据 ({ticker})")
 
-            # 展开多重索引
+            # flatten multi-level column index
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.droplevel(1)
 
-            # 转为 GoldPriceAnalyzer 需要的 [{price, date}] 格式
+            # convert to the [{price, date}] format expected by GoldPriceAnalyzer
             data = []
             for idx, row in df.iterrows():
                 close_val = row["Close"]
@@ -38,10 +38,10 @@ class QuantEngineerAgent(LLMAgent):
             analyzer = GoldPriceAnalyzer(data)
             res = analyzer.analyze()
 
-            # 格式化均线
+            # format moving averages
             ma_str = "  ".join([f"{k}=${v:.2f}" for k, v in res.ma_analysis.items()])
 
-            # 格式化支撑/阻力位
+            # format support / resistance levels
             support_str = (
                 ", ".join([f"${s:.2f}" for s in res.support_resistance.support_levels])
                 if res.support_resistance.support_levels else "暂无"
@@ -51,7 +51,7 @@ class QuantEngineerAgent(LLMAgent):
                 if res.support_resistance.resistance_levels else "暂无"
             )
 
-            # RSI 状态
+            # RSI status
             if res.rsi > 70:
                 rsi_status = "超买"
             elif res.rsi < 30:
@@ -78,9 +78,9 @@ class QuantEngineerAgent(LLMAgent):
                 f"量化建议:    {res.recommendation}"
             )
 
-            # 直接返回结构化数据，不经过 LLM 二次加工
+            # return structured data directly, skipping a second LLM pass
             return Msg(name=self.name, role="assistant", content=quant_str)
 
         except Exception as e:
-            logger.error(f"量化指标计算失败: {e}", exc_info=True)
+            logger.error(f"Failed to compute quant indicators: {e}", exc_info=True)
             return Msg(name=self.name, role="assistant", content=f"【量化指标获取失败】{e}")

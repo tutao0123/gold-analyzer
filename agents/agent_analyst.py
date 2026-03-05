@@ -10,7 +10,7 @@ class RAGAnalystAgent(LLMAgent):
         self.rag_db = rag_db
 
     def _get_current_price(self):
-        """获取当前价格作为分析基准"""
+        """Fetch the current price to use as the analysis baseline."""
         try:
             import pandas as pd
             commodity_key = self.commodity["key"]
@@ -35,23 +35,23 @@ class RAGAnalystAgent(LLMAgent):
         if x is None: return super().reply(x)
 
         query = x.content if hasattr(x, 'content') else str(x)
-        print(f"\n[{self.name}] 正在知识库中检索图形记忆 ...")
+        print(f"\n[{self.name}] Searching knowledge base for chart pattern memories ...")
 
         try:
             commodity_key = self.commodity["key"]
             commodity_name = self.commodity["name"]
 
-            # 获取当前价格
+            # get current price
             current_price, latest_date = self._get_current_price()
             price_info = ""
             if current_price:
                 price_info = f"【当前最新价格】{current_price:.2f} {self.commodity['unit']}（截至 {latest_date}）\n"
 
-            # 非黄金品种或 RAG 库为空时，跳过 RAG，直接用 LLM 技术分析
+            # for non-gold commodities or when the RAG store is empty, skip RAG and use LLM technical analysis directly
             if commodity_key != "gold":
                 context = f"【当前品种 {commodity_name} 暂无历史图形记忆库】请基于价格走势直接进行技术形态分析。"
             else:
-                # 检索 RAG 历史图形记忆（取 top 3 条）
+                # retrieve historical chart pattern memories from RAG (top 3)
                 results = self.rag_db.search(query_text=query, top_k=3)
                 context = ""
                 if results:
