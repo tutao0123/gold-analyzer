@@ -54,7 +54,7 @@ def compute_features(df):
 
 # ==================== Dataset ====================
 
-class GoldDataset(Dataset):
+class PriceDataset(Dataset):
     def __init__(self, x, y):
         self.x = torch.tensor(x, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.float32)
@@ -68,9 +68,9 @@ class GoldDataset(Dataset):
 
 # ==================== LSTM Model ====================
 
-class GoldLSTM(nn.Module):
+class PriceLSTM(nn.Module):
     def __init__(self, input_size=NUM_FEATURES, hidden_size=128, num_layers=2, dropout=0.2):
-        super(GoldLSTM, self).__init__()
+        super(PriceLSTM, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         
@@ -148,19 +148,19 @@ def train_model(model_type="lstm", epochs=30, commodity_key="gold"):
         sequence_length=seq_length, commodity_key=commodity_key
     )
 
-    train_dataset = GoldDataset(x_train, y_train)
+    train_dataset = PriceDataset(x_train, y_train)
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 
-    test_dataset = GoldDataset(x_test, y_test)
+    test_dataset = PriceDataset(x_test, y_test)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
     # initialise model
     if model_type == "lstm":
-        model = GoldLSTM(input_size=NUM_FEATURES).to(device)
+        model = PriceLSTM(input_size=NUM_FEATURES).to(device)
         weight_file = f"{commodity_key}_lstm_weights.pth"
     elif model_type == "transformer":
-        from dl.transformer_model import GoldTransformer
-        model = GoldTransformer(input_size=NUM_FEATURES, seq_length=seq_length).to(device)
+        from dl.transformer_model import PriceTransformer
+        model = PriceTransformer(input_size=NUM_FEATURES, seq_length=seq_length).to(device)
         weight_file = f"{commodity_key}_transformer_weights.pth"
     else:
         raise ValueError(f"Unknown model type: {model_type}")

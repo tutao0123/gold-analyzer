@@ -2,7 +2,7 @@ import logging
 import pandas as pd
 import yfinance as yf
 from agents.base_agent import LLMAgent, Msg
-from core.analyzer import GoldPriceAnalyzer
+from core.analyzer import PriceAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class QuantEngineerAgent(LLMAgent):
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.droplevel(1)
 
-            # convert to the [{price, date}] format expected by GoldPriceAnalyzer
+            # convert to the [{price, date}] format expected by PriceAnalyzer
             data = []
             for idx, row in df.iterrows():
                 close_val = row["Close"]
@@ -35,7 +35,7 @@ class QuantEngineerAgent(LLMAgent):
             if not data:
                 return Msg(name=self.name, role="assistant", content="【量化指标获取失败】价格数据为空")
 
-            analyzer = GoldPriceAnalyzer(data)
+            analyzer = PriceAnalyzer(data)
             res = analyzer.analyze()
 
             # format moving averages

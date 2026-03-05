@@ -1,0 +1,14 @@
+torch
+yfinance
+faiss-cpu
+dashscope
+openai
+mplfinance
+pandas
+numpy
+scikit-learn
+matplotlib
+python-dotenv
+aiohttp
+aiofiles
+Pillow

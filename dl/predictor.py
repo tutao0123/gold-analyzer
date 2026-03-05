@@ -6,7 +6,7 @@ import pandas as pd
 import pickle
 
 # reuse feature engineering and model definitions from trainer
-from dl.trainer import GoldLSTM, compute_features, FEATURE_COLUMNS, NUM_FEATURES
+from dl.trainer import PriceLSTM, compute_features, FEATURE_COLUMNS, NUM_FEATURES
 
 
 class DLPredictor:
@@ -55,12 +55,12 @@ class DLPredictor:
         key = self.commodity_key
         if model_type == "lstm":
             weight_file = f"{key}_lstm_weights.pth"
-            model = GoldLSTM(input_size=NUM_FEATURES).to(self.device)
+            model = PriceLSTM(input_size=NUM_FEATURES).to(self.device)
         elif model_type == "transformer":
             weight_file = f"{key}_transformer_weights.pth"
             try:
-                from dl.transformer_model import GoldTransformer
-                model = GoldTransformer(input_size=NUM_FEATURES, seq_length=60).to(self.device)
+                from dl.transformer_model import PriceTransformer
+                model = PriceTransformer(input_size=NUM_FEATURES, seq_length=60).to(self.device)
             except ImportError:
                 return None
         else:

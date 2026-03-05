@@ -2,6 +2,9 @@ import os
 import sys
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # add project root to module search path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -11,7 +11,7 @@ import torch
 import numpy as np
 import pandas as pd
 import pickle
-from dl.trainer import GoldLSTM, compute_features, FEATURE_COLUMNS, NUM_FEATURES
+from dl.trainer import PriceLSTM, compute_features, FEATURE_COLUMNS, NUM_FEATURES
 
 
 class Backtester:
@@ -43,11 +43,11 @@ class Backtester:
             scaler = pickle.load(f)
 
         if self.model_type == "lstm":
-            model = GoldLSTM(input_size=NUM_FEATURES).to(self.device)
+            model = PriceLSTM(input_size=NUM_FEATURES).to(self.device)
             weight_file = f"{key}_lstm_weights.pth"
         elif self.model_type == "transformer":
-            from dl.transformer_model import GoldTransformer
-            model = GoldTransformer(input_size=NUM_FEATURES, seq_length=60).to(self.device)
+            from dl.transformer_model import PriceTransformer
+            model = PriceTransformer(input_size=NUM_FEATURES, seq_length=60).to(self.device)
             weight_file = f"{key}_transformer_weights.pth"
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")

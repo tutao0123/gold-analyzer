@@ -54,7 +54,7 @@ class AnalysisResult:
     summary: str
 
 
-class GoldPriceAnalyzer:
+class PriceAnalyzer:
     """Gold price analyzer"""
 
     def __init__(self, data: List[Dict]):
@@ -384,6 +384,6 @@ if __name__ == "__main__":
         for i in range(30)
     ]
 
-    analyzer = GoldPriceAnalyzer(test_data)
+    analyzer = PriceAnalyzer(test_data)
     result = analyzer.analyze()
     print(result.summary)

@@ -23,7 +23,7 @@ class CrossMarketAgent(LLMAgent):
                 "^TNX": "美国10年期国债收益率",
                 "^VIX": "VIX恐慌指数",
                 "CL=F": "WTI原油",
-                "GC=F": "黄金(基准)",
+                self.commodity["symbol"]: f"{self.commodity['name']}(当前分析标的)",
             }
             
             data_lines = []
@@ -47,8 +47,8 @@ class CrossMarketAgent(LLMAgent):
             # append analysis prompt
             prompt = (
                 f"【工作指令】以下是跨市场联动数据：\n{cross_data}\n\n"
-                "请你作为跨市场联动分析师，分析以上品种之间的联动关系对黄金的影响。"
-                "重点关注：美元与黄金的负相关是否成立？VIX 是否暗示避险需求？美债收益率走势如何影响持金成本？(100字内)"
+                f"请你作为跨市场联动分析师，分析以上品种之间的联动关系对{self.commodity['name']}的影响。"
+                f"重点关注：美元与{self.commodity['name']}的负相关是否成立？VIX 是否暗示避险需求？美债收益率走势如何影响持仓成本？(100字内)"
             )
             msg = Msg(name=x.name, role=x.role, content=prompt)
             return super().reply(msg)

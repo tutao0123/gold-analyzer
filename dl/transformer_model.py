@@ -1,5 +1,5 @@
 """
-GoldTransformer: Transformer Encoder-based time-series price prediction model.
+PriceTransformer: Transformer Encoder-based time-series price prediction model.
 Pure PyTorch implementation, no extra dependencies.
 """
 
@@ -26,7 +26,7 @@ class PositionalEncoding(nn.Module):
         return x + self.pe[:, :x.size(1), :]
 
 
-class GoldTransformer(nn.Module):
+class PriceTransformer(nn.Module):
     """
     Transformer Encoder time-series prediction model.
 
@@ -105,7 +105,7 @@ class GoldTransformer(nn.Module):
 
 if __name__ == "__main__":
     # quick shape sanity check
-    model = GoldTransformer(input_size=7, seq_length=60)
+    model = PriceTransformer(input_size=7, seq_length=60)
     dummy = torch.randn(4, 60, 7)
     out = model(dummy)
     print(f"Input shape:  {dummy.shape}")
