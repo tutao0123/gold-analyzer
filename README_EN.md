@@ -2,7 +2,7 @@
 
 A multi-agent collaborative system for futures price analysis and prediction, integrating technical analysis, deep learning forecasting, multimodal RAG knowledge retrieval, and large language model intelligence.
 
-> 中文文档请见 [README_ZH.md](./README_ZH.md)
+> 中文文档请见 [README.md](./README.md)
 
 ---
 
