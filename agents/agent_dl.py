@@ -12,8 +12,8 @@ class DLPredictorAgent(LLMAgent):
         super().__init__(*args, **kwargs)
         # 在 Agent 初始化时预加载模型权重，避免每次 reply() 重复读取磁盘
         print(f"  [{self.__class__.__name__}] 预加载深度学习模型权重...")
-        self._predictor = DLPredictor()
-        self._backtester = Backtester(model_type="lstm")
+        self._predictor = DLPredictor(commodity_key=self.commodity["key"])
+        self._backtester = Backtester(model_type="lstm", commodity_key=self.commodity["key"])
 
     def reply(self, x=None):
         if x is None:

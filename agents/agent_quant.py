@@ -1,7 +1,8 @@
 import logging
+import pandas as pd
+import yfinance as yf
 from agents.base_agent import LLMAgent, Msg
 from core.analyzer import GoldPriceAnalyzer
-from core.data_fetcher import GoldDataFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +13,28 @@ class QuantEngineerAgent(LLMAgent):
             return super().reply(x)
         print(f"\n[{self.name}] 正在调用 analyzer.py 计算本地行情指标 ...")
         try:
-            fetcher = GoldDataFetcher()
-            data = fetcher.generate_historical_data(30)
+            ticker = self.commodity["symbol"]
+            df = yf.download(ticker, period="40d", interval="1d", progress=False, auto_adjust=True)
+
+            if df.empty:
+                return Msg(name=self.name, role="assistant", content=f"【量化指标获取失败】yfinance 返回空数据 ({ticker})")
+
+            # 展开多重索引
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
+
+            # 转为 GoldPriceAnalyzer 需要的 [{price, date}] 格式
+            data = []
+            for idx, row in df.iterrows():
+                close_val = row["Close"]
+                if pd.isna(close_val):
+                    continue
+                price = float(close_val.iloc[0] if hasattr(close_val, "__len__") else close_val)
+                data.append({"date": str(idx.date()), "price": price})
+
+            if not data:
+                return Msg(name=self.name, role="assistant", content="【量化指标获取失败】价格数据为空")
+
             analyzer = GoldPriceAnalyzer(data)
             res = analyzer.analyze()
 
@@ -38,9 +59,11 @@ class QuantEngineerAgent(LLMAgent):
             else:
                 rsi_status = "中性"
 
+            commodity_name = self.commodity["name"]
+            unit = self.commodity["unit"]
             quant_str = (
-                f"【实时量化计算结果】\n"
-                f"当前金价:    ${res.current_price:.2f}\n"
+                f"【实时量化计算结果】品种: {commodity_name}\n"
+                f"当前价格:    {res.current_price:.2f} {unit}\n"
                 f"涨跌幅:      1日 {res.price_change_1d:+.2f}%  "
                 f"7日 {res.price_change_7d:+.2f}%  "
                 f"30日 {res.price_change_30d:+.2f}%\n"

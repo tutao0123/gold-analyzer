@@ -18,7 +18,7 @@ os.makedirs(REPORT_DIR, exist_ok=True)
 
 # API 配置
 # 使用 GoldAPI.io
-GOLD_API_KEY = os.getenv("GOLD_API_KEY", "goldapi-1ajarprsmma81n7v-io")
+GOLD_API_KEY = os.getenv("GOLD_API_KEY", "")
 GOLD_API_URL = "https://www.goldapi.io/api/XAU/USD"
 
 # 阿里云百炼大模型 API 配置
@@ -58,6 +58,9 @@ COMMODITY_SYMBOLS = {
     "brent_oil": {"symbol": "BZ=F", "name": "布伦特原油期货", "unit": "USD/桶"},
     # 能源
     "natural_gas": {"symbol": "NG=F", "name": "天然气期货", "unit": "USD/MMBtu"},
+    # 工业金属
+    "copper":   {"symbol": "HG=F",   "name": "铜期货",   "unit": "USD/磅"},
+    "aluminum": {"symbol": "ALI=F",  "name": "铝期货",   "unit": "USD/磅"},
     # 农产品
     "corn": {"symbol": "ZC=F", "name": "玉米期货", "unit": "USD/蒲式耳"},
     "wheat": {"symbol": "ZW=F", "name": "小麦期货", "unit": "USD/蒲式耳"},
@@ -71,3 +74,10 @@ COMMODITY_SYMBOLS = {
     # 债券收益率
     "tnx": {"symbol": "^TNX", "name": "10年期美债收益率", "unit": "%"},
 }
+
+# 适合全流程分析与预测的品种（剔除指数/外汇/债券等）
+ANALYZABLE_COMMODITIES = [
+    "gold", "silver", "platinum", "palladium",
+    "wti_oil", "copper", "aluminum",
+    "natural_gas", "corn", "wheat", "soybean",
+]

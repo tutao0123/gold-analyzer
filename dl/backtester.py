@@ -26,25 +26,29 @@ class Backtester:
     - 记录每日收益，最终统计绩效
     """
     
-    def __init__(self, model_type="lstm"):
+    def __init__(self, model_type="lstm", commodity_key="gold"):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
-        self.csv_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "gc_f_full_history.csv")
+        self.commodity_key = commodity_key
+        csv_name = "gc_f_full_history.csv" if commodity_key == "gold" else f"{commodity_key}_full_history.csv"
+        self.csv_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", csv_name)
         self.model_type = model_type
         
     def _load_model_and_scaler(self):
         """加载模型和缩放器"""
-        scaler_path = os.path.join(self.model_dir, "scaler.pkl")
+        key = self.commodity_key
+        scaler_name = "scaler.pkl" if key == "gold" else f"{key}_scaler.pkl"
+        scaler_path = os.path.join(self.model_dir, scaler_name)
         with open(scaler_path, "rb") as f:
             scaler = pickle.load(f)
-            
+
         if self.model_type == "lstm":
             model = GoldLSTM(input_size=NUM_FEATURES).to(self.device)
-            weight_file = "gold_lstm_weights.pth"
+            weight_file = f"{key}_lstm_weights.pth"
         elif self.model_type == "transformer":
             from dl.transformer_model import GoldTransformer
             model = GoldTransformer(input_size=NUM_FEATURES, seq_length=60).to(self.device)
-            weight_file = "gold_transformer_weights.pth"
+            weight_file = f"{key}_transformer_weights.pth"
         else:
             raise ValueError(f"未知模型: {self.model_type}")
             

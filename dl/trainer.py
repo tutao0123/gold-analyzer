@@ -93,15 +93,21 @@ class GoldLSTM(nn.Module):
 
 # ==================== 数据准备 ====================
 
-def prepare_data(sequence_length=60):
+def prepare_data(sequence_length=60, commodity_key="gold"):
     """
     从本地 CSV 加载数据，计算多维技术指标，构建滑动窗口数据集
     """
-    csv_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "gc_f_full_history.csv")
-    print(f"正在从本地 CSV 加载黄金历史数据...")
-    
+    if commodity_key == "gold":
+        csv_name = "gc_f_full_history.csv"
+    else:
+        csv_name = f"{commodity_key}_full_history.csv"
+    csv_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", csv_name)
+    print(f"正在从本地 CSV 加载 {commodity_key} 历史数据: {csv_file}")
+
     if not os.path.exists(csv_file):
-        raise FileNotFoundError("未找到本地 CSV 数据。请先运行 dl/download_history.py")
+        raise FileNotFoundError(
+            f"未找到本地 CSV 数据。请先运行: python dl/download_history.py --commodity {commodity_key}"
+        )
         
     df = pd.read_csv(csv_file, index_col=0, parse_dates=True)
     
@@ -133,26 +139,28 @@ def prepare_data(sequence_length=60):
 
 # ==================== 训练函数 ====================
 
-def train_model(model_type="lstm", epochs=30):
-    print(f"=== 开始 {model_type.upper()} 多维特征深度学习训练 (设备: {device}) ===")
-    
+def train_model(model_type="lstm", epochs=30, commodity_key="gold"):
+    print(f"=== 开始 {model_type.upper()} 多维特征深度学习训练 (品种: {commodity_key}, 设备: {device}) ===")
+
     seq_length = 60
-    x_train, y_train, x_test, y_test, scaler = prepare_data(sequence_length=seq_length)
-    
+    x_train, y_train, x_test, y_test, scaler = prepare_data(
+        sequence_length=seq_length, commodity_key=commodity_key
+    )
+
     train_dataset = GoldDataset(x_train, y_train)
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    
+
     test_dataset = GoldDataset(x_test, y_test)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
-    
+
     # 初始化模型
     if model_type == "lstm":
         model = GoldLSTM(input_size=NUM_FEATURES).to(device)
-        weight_file = "gold_lstm_weights.pth"
+        weight_file = f"{commodity_key}_lstm_weights.pth"
     elif model_type == "transformer":
         from dl.transformer_model import GoldTransformer
         model = GoldTransformer(input_size=NUM_FEATURES, seq_length=seq_length).to(device)
-        weight_file = "gold_transformer_weights.pth"
+        weight_file = f"{commodity_key}_transformer_weights.pth"
     else:
         raise ValueError(f"未知的模型类型: {model_type}")
     
@@ -206,12 +214,22 @@ def train_model(model_type="lstm", epochs=30):
     os.makedirs(model_dir, exist_ok=True)
     
     torch.save(model.state_dict(), os.path.join(model_dir, weight_file))
-    with open(os.path.join(model_dir, "scaler.pkl"), "wb") as f:
+    if commodity_key == "gold":
+        scaler_name = "scaler.pkl"
+    else:
+        scaler_name = f"{commodity_key}_scaler.pkl"
+    with open(os.path.join(model_dir, scaler_name), "wb") as f:
         pickle.dump(scaler, f)
-         
-    print(f"模型权重 [{weight_file}] 与 Scaler 已保存至 {model_dir}/")
+
+    print(f"模型权重 [{weight_file}] 与 Scaler [{scaler_name}] 已保存至 {model_dir}/")
     return best_test_loss
 
 
 if __name__ == "__main__":
-    train_model(model_type="lstm", epochs=30)
+    import argparse
+    parser = argparse.ArgumentParser(description="训练期货价格预测模型")
+    parser.add_argument("--commodity", default="gold", help="品种 key（如 gold, silver, copper）")
+    parser.add_argument("--model", default="lstm", choices=["lstm", "transformer"], help="模型类型")
+    parser.add_argument("--epochs", type=int, default=30, help="训练轮数")
+    args = parser.parse_args()
+    train_model(model_type=args.model, epochs=args.epochs, commodity_key=args.commodity)

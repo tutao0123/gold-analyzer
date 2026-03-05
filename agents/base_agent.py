@@ -5,6 +5,7 @@
 import os
 import logging
 from dataclasses import dataclass
+from typing import Optional
 
 import openai
 
@@ -33,13 +34,15 @@ class LLMAgent:
         name: str,
         sys_prompt: str,
         model_name: str = "qwen-plus",
-        api_key: str | None = None,
+        api_key: Optional[str] = None,
         enable_search: bool = False,
+        commodity: Optional[dict] = None,
     ):
         self.name = name
         self.sys_prompt = sys_prompt
         self.model_name = model_name
         self.enable_search = enable_search
+        self.commodity = commodity or {"key": "gold", "symbol": "GC=F", "name": "黄金期货", "unit": "USD/oz"}
         self._client = openai.OpenAI(
             api_key=api_key or os.getenv("DASHSCOPE_API_KEY"),
             base_url=_DASHSCOPE_BASE_URL,
