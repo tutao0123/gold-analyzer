@@ -4,7 +4,9 @@ markets, then uses LLM web search to supplement the latest Fed policy,
 economic data, and geopolitical developments.
 """
 import logging
+import pandas as pd
 from agents.base_agent import LLMAgent, Msg
+from utils.yf_safe import yf_download
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +25,10 @@ _MACRO_TICKERS = {
 def _fetch_macro_data() -> str:
     """Fetch hard macro data via yfinance and return a formatted string. Returns empty string on failure."""
     try:
-        import yfinance as yf
-        import pandas as pd
-
         lines = []
         for ticker, name in _MACRO_TICKERS.items():
             try:
-                df = yf.download(ticker, period="5d", interval="1d",
+                df = yf_download(ticker, period="5d", interval="1d",
                                  progress=False, auto_adjust=True)
                 if df.empty or len(df) < 2:
                     continue
@@ -45,8 +44,8 @@ def _fetch_macro_data() -> str:
 
         # yield curve shape analysis
         try:
-            irx_df  = yf.download("^IRX",  period="2d", progress=False, auto_adjust=True)
-            tnx_df  = yf.download("^TNX",  period="2d", progress=False, auto_adjust=True)
+            irx_df  = yf_download("^IRX",  period="2d", progress=False, auto_adjust=True)
+            tnx_df  = yf_download("^TNX",  period="2d", progress=False, auto_adjust=True)
             if not irx_df.empty and not tnx_df.empty:
                 irx = float(irx_df["Close"].iloc[-1].item() if hasattr(irx_df["Close"].iloc[-1], 'item') else irx_df["Close"].iloc[-1])
                 tnx = float(tnx_df["Close"].iloc[-1].item() if hasattr(tnx_df["Close"].iloc[-1], 'item') else tnx_df["Close"].iloc[-1])
@@ -63,8 +62,6 @@ def _fetch_macro_data() -> str:
 
         return "\n".join(lines)
 
-    except ImportError:
-        return ""
     except Exception as e:
         logger.warning(f"Failed to fetch macro data: {e}")
         return ""

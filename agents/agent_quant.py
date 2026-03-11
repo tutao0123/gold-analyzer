@@ -1,8 +1,8 @@
 import logging
 import pandas as pd
-import yfinance as yf
 from agents.base_agent import LLMAgent, Msg
 from core.analyzer import PriceAnalyzer
+from utils.yf_safe import yf_download
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class QuantEngineerAgent(LLMAgent):
         print(f"\n[{self.name}] Calling analyzer.py to compute local market indicators ...")
         try:
             ticker = self.commodity["symbol"]
-            df = yf.download(ticker, period="40d", interval="1d", progress=False, auto_adjust=True)
+            df = yf_download(ticker, period="40d", interval="1d", progress=False, auto_adjust=True)
 
             if df.empty:
                 return Msg(name=self.name, role="assistant", content=f"【量化指标获取失败】yfinance 返回空数据 ({ticker})")
@@ -27,9 +27,12 @@ class QuantEngineerAgent(LLMAgent):
             data = []
             for idx, row in df.iterrows():
                 close_val = row["Close"]
+                # handle Series/Index case - extract scalar value
+                if hasattr(close_val, "__len__") and len(close_val) > 0:
+                    close_val = close_val.iloc[0] if hasattr(close_val, "iloc") else close_val.values[0]
                 if pd.isna(close_val):
                     continue
-                price = float(close_val.iloc[0] if hasattr(close_val, "__len__") else close_val)
+                price = float(close_val)
                 data.append({"date": str(idx.date()), "price": price})
 
             if not data:

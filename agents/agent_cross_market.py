@@ -4,19 +4,18 @@ US Treasury yields, crude oil, VIX, and gold.
 """
 import os
 import sys
+import pandas as pd
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.base_agent import LLMAgent, Msg
+from utils.yf_safe import yf_download
 
 class CrossMarketAgent(LLMAgent):
     def reply(self, x: dict = None) -> dict:
         if x is None: return super().reply(x)
         print(f"\n[{self.name}] Fetching cross-market correlation data (DXY/Treasuries/VIX/Crude)...")
-        
+
         try:
-            import yfinance as yf
-            import pandas as pd
-            
             # fetch the last 5 days of data for correlated instruments
             tickers = {
                 "DX-Y.NYB": "美元指数(DXY)",
@@ -25,11 +24,11 @@ class CrossMarketAgent(LLMAgent):
                 "CL=F": "WTI原油",
                 self.commodity["symbol"]: f"{self.commodity['name']}(当前分析标的)",
             }
-            
+
             data_lines = []
             for ticker, name in tickers.items():
                 try:
-                    df = yf.download(ticker, period="5d", progress=False)
+                    df = yf_download(ticker, period="5d", progress=False)
                     if isinstance(df.columns, pd.MultiIndex):
                         df.columns = df.columns.droplevel(1)
                     if not df.empty and len(df) >= 2:
